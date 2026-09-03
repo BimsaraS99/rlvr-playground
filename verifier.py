@@ -36,7 +36,7 @@ def fail(msg: str):
 def load_agent_add(path: str = "stringcalc.py"):
     """
     Load the agent's module from `path` and return its `add` function.
-
+  
     TODO:
       - Handle: file missing -> fail(...)
       - Handle: import/syntax error -> fail(...)  (use try/except around exec_module)
@@ -49,28 +49,77 @@ def load_agent_add(path: str = "stringcalc.py"):
     #   module = importlib.util.module_from_spec(spec)
     #   spec.loader.exec_module(module)   # <- can raise; wrap in try/except
     #   return module.add
-    raise NotImplementedError("TODO: implement safe loading")
+
+    # Guard 1 (missing file)
+    import os
+    if not os.path.exists(path):
+        fail(f"File not found: {path}")
+
+    # Guard 2 (syntax / import error)
+    spec = importlib.util.spec_from_file_location("agent_stringcalc", path)
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)   # runs the agent's file; can raise
+    except Exception as e:
+        fail(f"could not import {path}: {e}")
+
+    # Guard 3 (no `add` attribute)
+    add_fn = getattr(module, "add", None)
+    if not callable(add_fn):
+        fail("'add' exists but is not callable")
+
+    # Guard 4 (optional: check it's callable / signature looks right)
+    import inspect
+    sig = inspect.signature(add_fn)
+    if len(sig.parameters) != 1:
+        fail(f"'add' has wrong number of parameters: {len(sig.parameters)}")
+
+    return add_fn
 
 
 def check_one(add_fn, text, expected):
     """
     Run add_fn(text) and return (ok: bool, detail: str).
 
-    TODO:
       - call add_fn(text) inside try/except; an exception => not ok
       - reject bool results (in Python True == 1, sneaky!) => not ok
       - require isinstance(result, int) => else not ok
       - compare result == expected
     """
-    raise NotImplementedError("TODO: implement a single-case check")
+
+    # call it, catching any exception as a failure
+    try:
+        result = add_fn(text)
+    except Exception as e:
+        return False, f"raised {type(e).__name__}: {e}"
+
+    # reject bool results (True == 1, sneaky!)
+    if isinstance(result, bool):
+        return False, f"returned bool {result} (not int)"
+
+    # require isinstance(result, int)
+    if not isinstance(result, int):
+        return False, f"returned {type(result).__name__} (not int)"
+
+    # compare result == expected
+    if result != expected:
+        return False, f"expected {expected}, got {result}"
+
+    return True, "PASS"
 
 
 def main():
     add_fn = load_agent_add("stringcalc.py")
 
-    # TODO: loop over CASES, use check_one, and fail() on the first bad one.
-    #       If all pass, print "PASS" and sys.exit(0).
-    raise NotImplementedError("TODO: implement the grading loop")
+    for text, expected in CASES:
+        ok, detail = check_one(add_fn, text, expected)
+        if not ok:
+            # report WHICH input failed, plus the detail from check_one
+            fail(f"input {text!r}: {detail}")
+
+    # if we get here, every case passed
+    print("PASS")
+    sys.exit(0)
 
 
 if __name__ == "__main__":

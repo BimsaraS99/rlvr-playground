@@ -18,6 +18,8 @@ specified:
 - `add("1,2,3")` returns `6`
 - Negative numbers are allowed: `add("1,-2,3")` returns `2`
 - Spaces around numbers are ignored: `add("1, 2 ,3")` returns `6`
+- A leading `+` sign is allowed: `add("+10")` returns `10`
+- Surrounding whitespace, including spaces and tabs, is ignored
 
 <!-- TODO: decide and STATE any extra rules your tests will check, e.g.:
      - what about a trailing comma "1,2,"?
